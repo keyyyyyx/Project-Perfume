@@ -1,0 +1,71 @@
+\documentclass[12pt]{amsart}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in,footskip=0.25in]{geometry}
+
+% See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\usepackage{amsmath}
+\newtheorem{thm}{Theorem}
+%\usepackage{algorithm}
+\usepackage{subfig}
+\usepackage[authoryear]{natbib}
+%\usepackage{subcaption}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\linespread{1}
+\usepackage{comment}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,linkcolor=blue, citecolor=blue]{hyperref}%
+
+\begin{document}
+
+    % Data Dic
+    \begin{center}
+        \begin{tabular}{ c | c | c }
+             \textbf{Variable} & \textbf{Data Type} & \textbf{Description} \\ \hline
+             old\_price & Quantitative & Perfume prices in USD \\  
+             ml & Discrete Quantitative & Volume of perfumes in ml \\
+             item\_rating & Quantitative & Customers’ ratings of perfume \\
+             seller\_rating & Quantitative & Customers' ratings of seller \\
+             conc & Categorical & The perfume’s concentration: EDP or EDT \\
+             num\_sel\_ratings & Discrete Quantitative & Number of customers’ ratings on the seller \\
+             big\_brand & Categorical & Perfume belongs to \emph{big brand} or not: 0 (no) or 1 (yes) \\
+             is\_noon & Categorical & Whether perfume sold by \emph{noon}: 0 (no) or 1 (yes) \\
+             comp & Discrete Quantitative & Complexity of perfume nodes \\
+             is.fresh & Categorical & Whether perfume scent is \emph{fresh}: 0 (no) or 1 (yes) \\
+             is.unisex & Categorical & Whether perfume department is \emph{unisex}: 0 (no) or 1 (yes)
+        \end{tabular}
+    \end{center}
+    
+    % errors 1st round
+    \begin{center}
+        \begin{tabular}{ c c c c c c c c}
+            \hline
+             \textbf{Model} & \textbf{RSE} & $\boldsymbol{R}^2$ & \textbf{MSE} & \textbf{GE} & $\boldsymbol{C}_p$ & \textbf{AIC} & \textbf{BIC}  \\ \hline
+             lm.1 & $216.3359$ & $0.1194184$ & $45804.19$ & $1994.036$ & $47798.23$ & $10864.87$ & $10949.14$ \\
+             lm.2 & $175.1131$ & $0.1754292$ & $29999.69$ & $1329.843$ & $31993.73$ & $10343.11$ & $10427.07$ \\
+             lm.3 & $175.1453$ & $0.1751258$ & $30049.85$ & $1252.077$ & $31926.59$ & $10342.42$ & $10421.71$ \\
+             lm.4 & $175.0719$ & $0.1758177$ & $30063.75$ & $1172.838$ & $31823.19$ & $10340.78$ & $10415.41$ \\
+             lm.5 & $175.1381$ & $0.1751940$ & $30125.62$ & $1095.477$ & $31767.77$ & $10340.39$ & $10410.36$ \\ \hline
+        \end{tabular}
+    \end{center}
+    
+    % errors 2nd round
+    \begin{center}
+        \begin{tabular}{ c c c c c c c c}
+            \hline
+             \textbf{Model} & \textbf{RSE} & $\boldsymbol{R}^2$ & \textbf{MSE} & \textbf{GE} & $\boldsymbol{C}_p$ & \textbf{AIC} & \textbf{BIC}  \\ \hline
+             lm.2 & $175.1131$ & $0.1754292$ & $29999.69$ & $1486.2950$ & $31329.53$ & $10343.11$ & $10427.07$ \\
+             lm.3 & $175.5700$ & $0.1711208$ & $30431.66$ & $786.3479$ & $31213.92$ & $10340.31$ & $10391.62$ \\
+             lm.4 & $175.4785$ & $0.1719850$ & $30439.21$ & $706.9752$ & $31143.25$ & $10338.51$ & $10385.15$ \\
+             lm.5 & $175.5352$ & $0.1714500$ & $30498.18$ & $628.8285$ & $31123.99$ & $10338.03$ & $10380.01$ \\ \hline
+        \end{tabular}
+    \end{center}
+    
+\end{document}
+
