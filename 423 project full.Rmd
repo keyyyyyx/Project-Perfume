@@ -1,0 +1,613 @@
+---
+title: "423 project"
+author: "Chris Chen"
+date: "1/20/2022"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Preliminaries
+
+```{r}
+library(tidyverse)
+library(expm)
+library(ggplot2)
+library(lmvar)
+library(leaps)
+library(lmtest)
+library(RColorBrewer)
+```
+
+
+## Dataset
+
+```{r}
+perfume = read.csv("noon_perfumes_dataset.csv")
+sum(is.na(perfume))
+head(perfume)
+```
+
+no empty value. good.
+
+
+```{r}
+perfume = perfume %>%
+  mutate(scent = ifelse(scents == "Arabian", "Oriental", scents))
+p1 = subset(perfume, scent != "Vanilla" & scent != "Aromatic" & scent != "Musk" & scent != "Jasmine" & scent != "Floral and Oriental" & scent != "Rose, Floral" & scent != "Sandalwood" & scent != "Woody, Sweet" & scent != "Aromatic,Citrus" & scent != "Clean" & scent != "Oriental, Floral" & scent != "Sweet Aromatic" & scent != "Woody And Spicy" & scent != "Woody, Musky")
+```
+
+```{r}
+p2 = p1 %>% 
+  mutate(conc = ifelse(concentration == "PDT", "EDT", concentration))
+p2 = subset(p2, select = -c(concentration))
+```
+
+```{r}
+p3 = p2 %>%
+  mutate(brands1 = ifelse(brand == "ST Dupont", "S.T.Dupont", brand)) %>%
+  mutate(brands2 = ifelse(brands1 == "armani", "GIORGIO ARMANI", brands1)) %>%
+  mutate(brands3 = ifelse(brands2 == "Genie Collection", "Genie", brands2)) %>%
+  mutate(brands4 = ifelse(brands3 == "LANVIN PARIS", "LANVIN", brands3)) %>%
+  mutate(brands5 = ifelse(brands4 == "Mont Blanc", "MONTBLANC", brands4)) %>%
+  mutate(brands6 = ifelse(brands5 == "marbert man", "Marbert", brands5)) %>%
+  mutate(brands = ifelse(brands6 == "YSL" | brands6 == "YVES", "Yves Saint Laurent", brands6))
+p3 = subset(p3, select = -c(brand, brands1, brands2, brands3, brands4, brands5, brands6))
+```
+
+```{r}
+p4 = subset(p3, seller_rating <= 5.0)
+p5 = p4 %>%
+  mutate(num_sel_ratings = 
+           ifelse(grepl("K", num_seller_ratings), 
+                  as.numeric(substring(num_seller_ratings, 1, nchar(num_seller_ratings) - 1)) * 1000,
+                  as.numeric(num_seller_ratings)))
+p5 = subset(p5, select = -c(num_seller_ratings))
+```
+
+
+```{r}
+# clean seller column
+seller = as.vector(p5$seller)
+seller = tolower(seller)
+index_golden = which(grepl("golden", seller))
+seller[index_golden] = "golden perfumes"
+index_lolita = which(grepl("lolita", seller))
+seller[index_lolita] = "lolita shop"
+index_noon = which(grepl("noon", seller))
+seller[index_noon] = "noon"
+index_swiss = which(grepl("swiss", seller))
+seller[index_swiss] = "swiss arabian perfumes"
+index_pa = which(grepl("perfumes--addresses", seller))
+seller[index_pa] = "perfumes"
+index_ps = which(grepl("perfumes-shop", seller))
+seller[index_ps] = "perfumes"
+
+p6 = p5
+p6$seller = seller
+sb = c(48, 435, 651)
+bf = c(109, 121, 470, 565, 576)
+p6 = p6 %>% 
+  mutate(seller1 = ifelse(is.element(X, sb), "show biz", seller)) %>%
+  mutate(sellers = ifelse(is.element(X, bf), "beauty fortune", seller))
+p6 = subset(p6, select = -c(seller1, seller))
+p6 = p6 %>%
+  filter(conc != "EDC")
+```
+
+
+```{r}
+base_note = as.vector(p6$base_note)
+base_note = tolower(base_note)
+base_note = str_replace_all(base_note, " and ", ",")
+base_note = str_replace_all(base_note, " ", "")
+base_note = str_replace_all(base_note, "vanille", "vanilla")
+base_note = str_replace_all(base_note, "woodsynotes", "wood")
+base_note = str_replace_all(base_note, "orrisroot", "orris")
+base_note = str_replace_all(base_note, "woodsynote", "wood")
+base_note = str_replace_all(base_note, "woodynotes", "wood")
+base_note = str_replace_all(base_note, "woody", "wood")
+base_note = str_replace_all(base_note, "cedarwood", "cedar")
+base_note = str_replace_all(base_note, "virginiacedar", "cedar")
+base_note = str_replace_all(base_note, "whitemusk", "musk")
+base_note = str_replace_all(base_note, "tonkabeans", "tonka")
+base_note = str_replace_all(base_note, "tonkabean", "tonka")
+base_note = str_replace_all(base_note, "amberwood", "amber")
+base_note = str_replace_all(base_note, "sandalwood", "sandal")
+base_note = str_replace_all(base_note, "cashmerewood", "cashmere")
+base_note = str_replace_all(base_note, "guaiacwood", "guaiac")
+base_note = str_replace_all(base_note, "ambergris", "AMBERGRIS")
+base_note = str_replace_all(base_note, "mustyoud", "oud")
+base_note = str_replace_all(base_note, "naturaloudoil", "oud")
+base_note = str_replace_all(base_note, "agarwood\\(oud\\)", "oud")
+base_note = str_replace_all(base_note, "agarwood", "oud")
+base_note = str_replace_all(base_note, "oudh", "oud")
+p6$base_note = base_note
+```
+
+
+```{r}
+mid_note = as.vector(p6$middle_note)
+mid_note = tolower(mid_note)
+mid_note = str_replace_all(mid_note, " and ", ",")
+mid_note = str_replace_all(mid_note, " ", "")
+mid_note = str_replace_all(mid_note, "lily-of-the-valley", "lily")
+mid_note = str_replace_all(mid_note, "orrisroot", "orris")
+mid_note = str_replace_all(mid_note, "lilyofthevalley", "lily")
+mid_note = str_replace_all(mid_note, "bulgarianrose", "rose")
+mid_note = str_replace_all(mid_note, "africanorangeflower", "orangeblossom")
+mid_note = str_replace_all(mid_note, "neroli", "orangeblossom")
+mid_note = str_replace_all(mid_note, "jasminesambac", "jasmine")
+mid_note = str_replace_all(mid_note, "wildjasmine", "jasmine")
+mid_note = str_replace_all(mid_note, "wildjasmine", "jasmine")
+mid_note = str_replace_all(mid_note, "blackpepper", "pepper")
+mid_note = str_replace_all(mid_note, "pinkpepper", "pepper")
+mid_note = str_replace_all(mid_note, "vanille", "vanilla")
+mid_note = str_replace_all(mid_note, "tuberose", "TUBEROSE")
+mid_note = str_replace_all(mid_note, "orrisroot", "ORRISROOT")
+mid_note = str_replace_all(mid_note, "honeysuckle", "HONEYSUCKLE")
+mid_note = str_replace_all(mid_note, "rosemary", "ROSEMARY")
+mid_note = str_replace_all(mid_note, "violetleaf", "VIOLETLEAF")
+mid_note = str_replace_all(mid_note, "clarysage", "CLARYSAGE")
+mid_note = str_replace_all(mid_note, "oudh", "oud")
+mid_note = str_replace_all(mid_note, "burningoud", "oud")
+mid_note = str_replace_all(mid_note, "agarwood\\(oud\\)", "oud")
+mid_note = str_replace_all(mid_note, "agarwood", "oud")
+mid_note = str_replace_all(mid_note, "oudwood", "oud")
+p6$middle_note = mid_note
+```
+
+
+```{r}
+p7 = p6 %>%
+  filter(ml > 5)
+# 
+# # add ordinal version of ml
+# vol = as.vector(p7$ml)
+# unique_vol = as.data.frame(vol) %>%
+#   group_by(vol) %>%
+#   summarise(count = n()) %>%
+#   subset(select = vol)
+# unique_vol = as.vector(unique_vol$vol)
+# 
+# order = vol
+# rank = 0
+# for (i in unique_vol) {
+#   rank = rank + 1
+#   index = which(vol == i)
+#   order[index] = rank
+# }
+# p7$ml_order = order
+# p7 = subset(p7, select = -c(ml))
+p7 = p7 %>%
+  mutate(gender = ifelse(department == "Kids Unisex", "Unisex", department)) %>%
+  filter(middle_note != "shavingsoap")
+```
+
+
+```{r}
+perfume = subset(p7, select = -c(department, X, name, scents))
+perfume = unique(perfume)
+
+brand = as.vector(p7$brands)
+brand = tolower(brand)
+new_brands = as.data.frame(brand) %>%
+  group_by(brand) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+big_brands = new_brands[which(new_brands$count > 10), ]$brand
+perfume = perfume %>% 
+  mutate(big_brand = ifelse(is.element(tolower(brands), big_brands), 1, 0))
+perfume = subset(perfume, select = -c(brands))
+
+perfume = perfume %>% 
+  mutate(is_noon = ifelse(tolower(sellers) == 'noon', 1, 0))
+perfume = subset(perfume, select = -c(sellers))
+
+get_notes = function(base, middle) {
+  bnote = as.vector(unlist(strsplit(base, split = ",")))
+  mnote = as.vector(unlist(strsplit(middle, split = ",")))
+  return(union(bnote, mnote))
+}
+
+complexity = function(notes) {
+  return(length(notes))
+}
+
+luxury = function(notes) {
+  score = 0
+  for (i in 1:length(notes)) {
+    if (notes[i] == "musk" | notes[i] == "orris") { # 100-200
+      score = score + 1
+    } else if (notes[i] == "neroli" | notes[i] == "jasmine" | notes[i] == "sandal") { # 200-400
+      score = score + 2
+    } else if (notes[i] == "rose" | notes[i] == "tuberose") { # 400-800
+      score = score + 3
+    } else if (notes[i] == "AMBERGRIS") { # 800-1200
+      score = score + 4
+    } else if (notes[i] == "oud") { # 1200-1600
+      score = score + 5
+    } else {
+      score = score + 0
+    }
+  }
+  return(score)
+}
+```
+
+
+```{r}
+N = nrow(perfume)
+complex = lux = rep(0, N)
+for (i in 1:N) {
+  complex[i] = complexity(get_notes(perfume[i, ]$base_note, perfume[i, ]$middle_note))
+  lux[i] = luxury(get_notes(perfume[i, ]$base_note, perfume[i, ]$middle_note))
+}
+comp_score = lux_score = rep(0, N)
+for (i in 1:N) {
+  x = complex[i]
+  comp_score[i] = sum(complex <= x) / N * 100
+  y = lux[i]
+  lux_score[i] = sum(lux <= y) / N * 100
+}
+perfume = perfume %>%
+  mutate(comp = complex)
+# (comp_score * lux_score) / 100
+
+```
+
+
+```{r}
+rse = function(model) {
+  sqrt(sum(model$residuals ^ 2) / model$df.residual)
+}
+
+r2 = function(model) {
+  summary(model)$adj.r.squared
+}
+
+mse = function(model) {
+  mean(model$residuals ^ 2)
+}
+
+ge = function(model) {
+  n = nobs(model)
+  ge = 2 * (rse(model) ^ 2) * length(model$coefficients) / n
+  return(ge)
+}
+
+Cp.lm = function(mdl.list) {
+  n = nobs(mdl.list[[1]])
+  DoFs = sapply(mdl.list, function(mdl) { sum(hatvalues(mdl)) })
+  MSEs = sapply(mdl.list, function(mdl) { mean(residuals(mdl)^2) })
+  biggest = which.max(DoFs)
+  sigma2.hat = MSEs[[biggest]]*n/(n-DoFs[[biggest]])
+  Cp = MSEs + 2*sigma2.hat*DoFs/n
+  return(Cp)
+}
+```
+
+
+```{r}
+perfume = subset(perfume, select = -c(new_price, base_note, middle_note))
+```
+
+```{r}
+# correlation plot
+perfume_corrplot <- perfume
+conc_code <- rep(0, length(perfume_corrplot$conc))
+index <- which(perfume_corrplot$conc == "EDT")
+conc_code[index] = 1
+perfume_corrplot$conc <- conc_code
+gender_code <- rep(0, length(perfume_corrplot$gender))
+index <- which(perfume_corrplot$gender == "Men")
+gender_code[index] <- 1
+index <- which(perfume_corrplot$gender == "Unisex")
+gender_code[index] <- 2
+perfume_corrplot$gender <- gender_code
+#perfume_corrplot$EDT <- (perfume_corrplot$conc == "EDT") + 0
+# perfume_corrplot$Men <- (perfume_corrplot$gender == "Men") + 0
+# perfume_corrplot$Women <- (perfume_corrplot$gender == "Women") + 0
+# unique(perfume_corrplot$scent)
+scents <- c("Fresh", "Woody", "Floral", "Oriental", "Spicy", "Fruity", "Citrus")
+scent_code <- numeric(length = length(perfume_corrplot$scent))
+for (i in 0:(length(scents)-1)) {
+  index <- which(perfume_corrplot$scent == scents[i+1])
+  scent_code[index] <- i
+}
+perfume_corrplot$scent <- scent_code
+pairs(old_price ~ ., data = perfume_corrplot)
+```
+
+
+```{r}
+lm.1 = lm(old_price ~ ., data = perfume)
+summary(lm.1)
+```
+
+
+```{r}
+# residual analysis
+plot(lm.1, which = 4)
+dwtest(lm.1, alternative = "two.sided")
+
+set1 = lm.1$residuals[which(lm.1$fitted.values >= 300)]
+set2 = lm.1$residuals[which(lm.1$fitted.values < 300)]
+var.test(set1, set2)
+
+cds <- cooks.distance(lm.1)
+plot(cds, type = "h", ylim = c(0, 0.1), ylab = "Cook's distance", xlab = "Obs. number", main = "Cook's Distance")
+max10 <- sort(cds, decreasing = T)[1:10]
+index <- as.numeric(names(max10))
+text(x=index, y=max10, labels= index, pos=3)
+```
+
+```{r}
+perfume2 = perfume %>%
+  filter(old_price < 930)
+```
+
+
+```{r}
+lm.2 = lm(old_price ~ ., data = perfume2)
+summary(lm.2)
+```
+
+
+```{r}
+# residual analysis
+plot(lm.2)
+plot(lm.2, which = 4)
+dwtest(lm.2, alternative = "two.sided")
+
+set1 = lm.2$residuals[which(lm.2$fitted.values >= 300)]
+set2 = lm.2$residuals[which(lm.2$fitted.values < 300)]
+var.test(set1, set2)
+```
+
+
+```{r}
+# remove is_noon?
+lm.3 = lm(old_price ~ big_brand + comp + item_rating +
+            conc + ml + num_sel_ratings +
+            gender + seller_rating + scent, data = perfume3)
+summary(lm.3)
+anova(lm.2, lm.3)
+# yes
+```
+
+```{r}
+# remove item_rating?
+lm.4 = lm(old_price ~ big_brand + comp + 
+            conc + ml + num_sel_ratings +
+            gender + seller_rating + scent, data = perfume3)
+summary(lm.4)
+anova(lm.3, lm.4)
+# yes
+```
+
+```{r}
+# remove num_sel_ratings?
+lm.5 = lm(old_price ~ big_brand + comp + 
+            conc + ml + 
+            gender + seller_rating + scent, data = perfume3)
+summary(lm.5)
+anova(lm.4, lm.5)
+# yes
+```
+
+```{r}
+# remove seller_rating?
+lm.6 = lm(old_price ~ big_brand + comp + 
+            conc + ml + 
+            gender + scent, data = perfume2)
+summary(lm.6)
+anova(lm.5, lm.6)
+# no
+```
+
+
+```{r}
+# remove comp?
+lm.7 = lm(old_price ~ big_brand + 
+            conc + ml + seller_rating +
+            gender + scent, data = perfume2)
+summary(lm.7)
+anova(lm.5, lm.7)
+# We cannot.
+```
+
+
+```{r}
+# remove gender?
+lm.8 = lm(old_price ~ big_brand +
+            conc + ml + comp + seller_rating +
+            scent, data = perfume2)
+summary(lm.8)
+anova(lm.5, lm.8)
+# We cannot.
+```
+
+```{r}
+# remove concentration?
+lm.9 = lm(old_price ~ big_brand + gender + comp + seller_rating +
+            ml + scent, data = perfume2)
+summary(lm.9)
+anova(lm.5, lm.9)
+# No.
+```
+
+```{r}
+# remove scent?
+lm.10 = lm(old_price ~ big_brand + gender + ml + conc + seller_rating + comp, data = perfume2)
+summary(lm.10)
+anova(lm.5, lm.10)
+# No.
+```
+
+```{r}
+# RSE
+rses = c(rse(lm.1), rse(lm.2), rse(lm.3), rse(lm.4), rse(lm.5))
+# R^2
+r2s = c(r2(lm.1), r2(lm.2), r2(lm.3), r2(lm.4), r2(lm.5))
+# MSE
+mses = c(mse(lm.1), mse(lm.2), mse(lm.3), mse(lm.4), mse(lm.5))
+# generalization error
+ges = c(ge(lm.1), ge(lm.2), ge(lm.3), ge(lm.4), ge(lm.5))
+# Marlow's Cp
+Cps = Cp.lm(list(lm.1, lm.2, lm.3, lm.4, lm.5))
+# AIC
+aics = AIC(lm.1, lm.2, lm.3, lm.4, lm.5)[, 2]
+# BIC
+bics = BIC(lm.1, lm.2, lm.3, lm.4, lm.5)[, 2]
+# cannot remove scent, conc
+metrics = data.frame(rses, r2s, mses, ges, Cps, aics, bics); metrics
+```
+
+
+```{r}
+## 5-fold CV
+pre.ols = rep(0, nrow(perfume2))
+pre.best = rep(0, nrow(perfume2))
+folds = 5
+sb = round(seq(0, nrow(perfume2), length = (folds + 1)))
+for (i in 1:folds) {
+  test = (sb[((folds + 1) - i)] + 1):(sb[((folds + 2) - i)])
+  train = (1:nrow(perfume2))[-test]
+  ## fit models
+  fit.ols = lm(old_price ~ ., data = perfume2[train, ])
+  fit.best = lm(old_price ~ big_brand + comp + conc + ml + 
+                  gender + seller_rating + scent, data = perfume2[train, ])
+  ## create predictions
+  pre.ols[test] = predict(fit.ols, newdata = perfume2[test, ])
+  pre.best[test] = predict(fit.best, newdata = perfume2[test, ])
+}
+## Finally, compute the mean squared prediction error:
+mean((perfume2$old_price - pre.ols) ^ 2)
+mean((perfume2$old_price - pre.best) ^ 2)
+```
+
+
+```{r}
+price_by_scent = perfume2 %>%
+  group_by(scent) %>%
+  summarise(avg_price = mean(old_price))
+count_by_scent = perfume2 %>%
+  group_by(scent) %>%
+  summarise(count = n())
+scent_df = data.frame(price_by_scent, count_by_scent[, 2]); scent_df
+
+perfume3 = perfume2 %>%
+  mutate(is.fresh = ifelse(scent == "Fresh", 1, 0)) %>%
+  mutate(is.unisex = ifelse(gender == "Unisex", 1, 0))
+lm.11 = lm(old_price ~ big_brand + conc + comp + seller_rating + ml + is.unisex + is.fresh, data = perfume3)
+summary(lm.11)
+```
+
+
+```{r}
+# residual analysis
+plot(lm.11)
+plot(lm.11, which = 4)
+dwtest(lm.11, alternative = "two.sided")
+
+set1 = lm.11$residuals[which(lm.11$fitted.values >= 300)]
+set2 = lm.11$residuals[which(lm.11$fitted.values < 300)]
+var.test(set1, set2)
+```
+
+```{r}
+# tests
+dwtest(lm.11, alternative = "two.sided")
+
+set1 = lm.9$residuals[which(lm.9$fitted.values >= 300)]
+set2 = lm.9$residuals[which(lm.9$fitted.values < 300)]
+var.test(set1, set2)
+```
+
+```{r plots}
+palette(brewer.pal(n = 12, name = "Paired"))
+
+# Department
+p7 %>%
+  group_by(department) %>%
+  summarise(count = n())
+dept_slice <- c(379, 50, 461)
+lbls <- c("Men", "Unisex", "Women")
+pie(dept_slice, labels = lbls, main="Pie Chart of Departments", col = c("#A6CEE3", "#ffffff", "#CAB2D6"))
+
+# Brands
+p3 %>%
+  group_by(brands) %>%
+  summarise(count = n())
+
+brand_slice <- perfume %>%
+  group_by(big_brand) %>%
+  summarise(count = n())
+pie(brand_slice$count, labels = c("Niche", "Big Brands"), main="Pie Chart of Brand", col = c("#CAB2D6", "#ffffff"))
+
+# Scent
+scent_count <- perfume %>%
+  group_by(scent) %>%
+  summarise(count = n())
+pie(scent_count$count, labels = scent_count$scent, main="Pie Chart of Scents", col = c("#A6CEE3", "#ffffff", "#CAB2D6", "#FFFF99", "#FDBF6F", "#FB9A99", "#B2DF8A"))
+
+scent_slice <- perfume3 %>%
+  group_by(is.fresh) %>%
+  summarise(count = n())
+pie(scent_slice$count, labels = c("Others", "Fresh"), main="Pie Chart of Merged Scents", col = c("#A6CEE3", "#ffffff"))
+
+# Price
+hist(perfume$old_price, main = "Histogram of Price", xlab = "Price", col = "#A6CEE3", breaks = 20)
+
+# score
+hist(perfume$comp, main = "Histogram of Score", xlab = "Score", col = "#CAB2D6")
+
+# Seller
+p1 %>%
+  group_by(seller) %>%
+  summarise(count = n())
+seller_slice <- perfume %>%
+  group_by(is_noon) %>%
+  summarise(count = n())
+pie(seller_slice$count, labels = c("Non-noon", "Noon"), main="Pie Chart of Seller", col = c("#A6CEE3", "#ffffff"))
+
+# volume
+p1 %>%
+  group_by(ml) %>%
+  summarise(count = n())
+ml_count <- perfume %>%
+  group_by(ml) %>%
+  summarise(count = n())
+barplot(ml_count$count, names.arg = ml_count$ml, main = "Barplot for Volume", xlab = "Volume", col = "#A6CEE3")
+
+# conc
+conc_slice <- perfume %>%
+  group_by(conc) %>%
+  summarise(count = n())
+pie(conc_slice$count, labels = conc_slice$conc, main="Pie Chart of Concentration", col = c("#CAB2D6", "#A6CEE3"))
+
+# Item rating
+hist(perfume$item_rating, col = "#A6CEE3", main = "Histogram of Item Rating", xlab = "Item Rating")
+
+# seller rating
+hist(perfume$seller_rating, col = "#CAB2D6", main = "Histogram of Seller Rating", xlab = "Seller Rating")
+
+# num seller rating
+hist(perfume$num_sel_ratings, col = "#A6CEE3", main = "Histogram of Num Seller Rating", xlab = "Num Seller Rating")
+
+# Comp
+hist(perfume$comp, breaks = 20, main = "Histogram of Complexity", xlab = "Complexity", col = "#CAB2D6")
+
+as.data.frame(base_note) %>%
+  group_by(base_note) %>%
+  summarise(count = n())
+```
+
+
