@@ -1,6 +1,6 @@
 ---
 title: "423 project"
-author: "Chris Chen"
+author: "Chris Chen, Yueqi Xu, Peter Liu"
 date: "1/20/2022"
 output:
   html_document:
