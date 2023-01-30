@@ -376,7 +376,7 @@ var.test(set1, set2)
 # remove is_noon?
 lm.3 = lm(old_price ~ big_brand + comp + item_rating +
             conc + ml + num_sel_ratings +
-            gender + seller_rating + scent, data = perfume3)
+            gender + seller_rating + scent, data = perfume2)
 summary(lm.3)
 anova(lm.2, lm.3)
 # yes
@@ -386,7 +386,7 @@ anova(lm.2, lm.3)
 # remove item_rating?
 lm.4 = lm(old_price ~ big_brand + comp + 
             conc + ml + num_sel_ratings +
-            gender + seller_rating + scent, data = perfume3)
+            gender + seller_rating + scent, data = perfume2)
 summary(lm.4)
 anova(lm.3, lm.4)
 # yes
@@ -396,7 +396,7 @@ anova(lm.3, lm.4)
 # remove num_sel_ratings?
 lm.5 = lm(old_price ~ big_brand + comp + 
             conc + ml + 
-            gender + seller_rating + scent, data = perfume3)
+            gender + seller_rating + scent, data = perfume2)
 summary(lm.5)
 anova(lm.4, lm.5)
 # yes
